@@ -1,0 +1,43 @@
+# Vigia de fora (auditoria 3, ponto 1.1).
+#
+# Abre o /healthz da dashboard de 5 em 5 minutos. Se falhar 3 vezes
+# seguidas (≈1 min), abre uma tarefa urgente no ClickUp; quando o site
+# voltar, comenta nessa tarefa com o tempo em baixo.
+#
+# Repositório público para ter minutos ilimitados. Nada sensível aqui:
+# endereço, token e lista estão nos segredos do repositório. Os logs são
+# públicos — nunca imprimir o endereço nem respostas do ClickUp.
+name: vigia
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'Só verificar, sem avisar nem gravar estado'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vigia
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar e avisar
+        env:
+          DASH_URL: ${{ secrets.DASH_URL }}
+          CLICKUP_TOKEN: ${{ secrets.CLICKUP_TOKEN }}
+          CLICKUP_LIST_ID: ${{ secrets.CLICKUP_LIST_ID }}
+          CLICKUP_QUEM: ${{ secrets.CLICKUP_QUEM }}
+          ENSAIO: ${{ github.event_name == 'workflow_dispatch' && inputs.ensaio && '1' || '' }}
+        run: ./vigia.sh
